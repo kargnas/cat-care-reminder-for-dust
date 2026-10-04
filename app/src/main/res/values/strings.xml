@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">먼지 알림</string>
+
+    <string name="item_kremezin">크레메진</string>
+    <string name="item_gi">위장약</string>
+    <string name="item_fluid">수액</string>
+    <string name="type_food_put">밥 담음</string>
+    <string name="type_food_left">남은 양</string>
+    <string name="type_wet">습식</string>
+    <string name="type_weight">몸무게</string>
+    <string name="type_stimulant">식욕촉진제</string>
+
+    <string name="dose_pills">%1$s %2$d알</string>
+    <string name="dose_ml">%1$s %2$dmL</string>
+    <string name="amount_g">%1$dg</string>
+    <string name="amount_kg">%1$.2fkg</string>
+    <string name="left_discarded">%1$dg 버림</string>
+    <string name="left_kept">%1$dg 그대로 둠</string>
+
+    <string name="action_given">줬어요</string>
+    <string name="action_snooze">30분 뒤에</string>
+    <string name="action_undo">되돌리기</string>
+    <string name="action_redo">다시 넣기</string>
+    <string name="action_give_label">%1$s 줬어요</string>
+
+    <string name="ch_loud">투약 알림</string>
+    <string name="ch_loud_desc">약과 수액 시간이에요. 소리와 진동이 울려요.</string>
+    <string name="ch_quiet">자는 시간 알림</string>
+    <string name="ch_quiet_desc">수면 시간에는 소리 없이 띄워요.</string>
+    <string name="ch_logged">기록 확인</string>
+    <string name="ch_logged_desc">줬어요를 누른 뒤 5분 동안 되돌릴 수 있어요.</string>
+
+    <string name="notif_due_title">%1$s 줄 시간이에요</string>
+    <string name="notif_due_text">예정 %1$s</string>
+    <string name="notif_late_text">예정 %1$s · %2$s 늦음</string>
+    <string name="notif_logged">%1$s 기록됨 %2$s</string>
+
+    <string name="dur_hm">%1$d시간 %2$d분</string>
+    <string name="dur_h">%1$d시간</string>
+    <string name="dur_m">%1$d분</string>
+
+    <string name="status_due_at">예정 %1$s · %2$s 남음</string>
+    <string name="status_late">예정 %1$s · %2$s 늦음</string>
+    <string name="status_now">예정 %1$s · 지금</string>
+    <string name="status_locked">아직 못 줘요 · 최소 30분 · %1$s 남음 (%2$s)</string>
+    <string name="status_early">지금 가능 · 권장은 %1$s</string>
+    <string name="status_before_12h">12시간 전 · 예정 %1$s</string>
+    <string name="status_fluid_done">오늘 완료</string>
+    <string name="status_fluid_todo">오늘 아직 · %1$s</string>
+    <string name="note_spacing">참고 범위 밖 (%1$s)</string>
+    <string name="note_repeat_gap">같은 날 2회차 (%1$s 간격)</string>
+    <string name="note_repeat_day">같은 날 2회차</string>
+    <string name="adjust_row">→ %1$s %2$s 조정</string>
+    <string name="adjust_title">%1$s 시각 조정</string>
+    <string name="adjust_tag">조정</string>
+    <string name="adjust_entry">시각 조정</string>
+    <string name="adjust_chain">체인 기준 %1$s</string>
+    <string name="adjust_target">조정 %1$s</string>
+    <string name="adjust_gap">지난 %1$s %2$s → %3$s = %4$s</string>
+    <string name="adjust_safe">12시간 기준 안</string>
+    <string name="adjust_caution">참고 범위 밖</string>
+    <string name="adjust_ref_early">12시간보다 많이 이름</string>
+    <string name="adjust_ref_late">12시간보다 많이 늦음</string>
+    <string name="adjust_sep_red">%1$s(%2$s)과 30분 미만</string>
+    <string name="adjust_sep_amber">%1$s(%2$s)과 권장 2시간 미만</string>
+    <string name="adjust_save">저장</string>
+    <string name="adjust_cancel">조정 취소</string>
+    <string name="adjust_minus_1h">−1시간</string>
+    <string name="adjust_minus_30">−30분</string>
+    <string name="adjust_plus_30">+30분</string>
+    <string name="adjust_plus_1h">+1시간</string>
+    <string name="legend_safe">12시간 기준</string>
+    <string name="legend_caution">참고 범위 (수의사 지시 아님)</string>
+    <string name="note_violation_sep">간격 위반 (%1$s)</string>
+    <string name="note_violation_early">조기 투약 (%1$s 간격)</string>
+    <string name="note_off_window">조건 밖 (%1$s)</string>
+    <string name="off_window_pm">오후</string>
+    <string name="off_window_night">새벽</string>
+    <string name="tag_manual">직접 입력</string>
+    <string name="tag_edited">수정됨</string>
+    <string name="warn_sep">30분 안 지남 (%1$s)</string>
+    <string name="warn_before_12h">12시간 전 (%1$s 간격)</string>
+    <string name="warn_not_morning">아침 아님</string>
+    <string name="tap_again">%1$s · 한 번 더 누르면 기록</string>
+    <string name="widget_open">앱에서 기록</string>
+    <string name="adjust_save_override">경고 무시하고 저장</string>
+    <string name="edit_title">%1$s 고치기</string>
+    <string name="add_title">직접 추가</string>
+    <string name="add_entry">직접 추가</string>
+    <string name="edit_date_prev">전날</string>
+    <string name="edit_date_next">다음 날</string>
+    <string name="edit_now">지금</string>
+    <string name="edit_note">메모</string>
+    <string name="edit_delete">삭제</string>
+    <string name="edit_save">저장</string>
+    <string name="edit_future">지금보다 뒤예요</string>
+    <string name="edit_left_over">담은 양보다 많아요</string>
+    <string name="edited_snack">수정했어요</string>
+    <string name="added_snack">추가했어요</string>
+    <string name="input_pills">알</string>
+    <string name="input_ml">mL</string>
+    <string name="note_early">권장 간격 전 (%1$d분)</string>
+    <string name="lock_reason">%1$s 준 지 30분이 안 됐어요</string>
+    <string name="early_reason">%1$s 준 지 2시간이 안 됐어요 (권장 2시간)</string>
+    <string name="widget_late">늦음 %1$s · %2$s</string>
+    <string name="widget_other">%1$s · %2$s</string>
+    <string name="widget_desc">다음에 줄 약과 시간</string>
+    <string name="item_at">%1$s · %2$s</string>
+
+    <string name="menu_log">기록</string>
+    <string name="menu_export">내보내기</string>
+    <string name="menu_settings">설정</string>
+
+    <string name="btn_food_put">밥 담았어요</string>
+    <string name="btn_food_left">남은 양</string>
+    <string name="btn_wet">습식</string>
+    <string name="btn_weight">몸무게</string>
+    <string name="btn_record">기록해요</string>
+    <string name="btn_discard">버림</string>
+    <string name="btn_keep">그대로 둠</string>
+    <string name="input_g">그램(g)</string>
+    <string name="input_kg">킬로그램(kg)</string>
+    <string name="left_question">남은 %1$dg는?</string>
+    <string name="sheet_food_put">밥 몇 g 담았어요?</string>
+    <string name="sheet_food_left">그릇에 몇 g 남았어요?</string>
+    <string name="sheet_wet">습식 몇 g 먹었어요?</string>
+    <string name="sheet_weight">몸무게는요?</string>
+
+    <string name="sum_food">오늘 건식 %1$dg / %2$dg · 습식 %3$dg</string>
+    <string name="sum_bowl">그릇에 %1$dg (아직 안 잼)</string>
+    <string name="sum_weight">몸무게 %1$.2fkg · 목표 %2$.1fkg</string>
+    <string name="sum_weight_none">몸무게 기록 없음 · 목표 %1$.1fkg</string>
+    <string name="warn_weight">몸무게 %1$.2fkg예요. 병원에 전화해요.</string>
+    <string name="warn_stim">어제 건식 %1$dg · 식욕촉진제 줄 아침이에요 (12:00 전)</string>
+    <string name="warn_stim_late">어제 건식 %1$dg · 식욕촉진제는 내일 아침 05:00–12:00에만 줘요</string>
+    <string name="warn_notif">알림이 꺼져 있어요</string>
+    <string name="warn_notif_btn">알림 켜기</string>
+    <string name="warn_exact">정확한 시간 알람 권한이 없어요</string>
+    <string name="warn_exact_btn">권한 열기</string>
+    <string name="give_stim">식욕촉진제 줬어요</string>
+    <string name="btn_stim">식욕촉진제</string>
+
+    <string name="log_title">기록</string>
+    <string name="log_empty">기록이 없어요</string>
+    <string name="undone">되돌렸어요</string>
+    <string name="logged_snack">%1$s 기록됨 %2$s</string>
+    <string name="day_header">%1$s · 건식 %2$dg · 습식 %3$dg</string>
+
+    <string name="settings_title">설정</string>
+    <string name="set_sleep_start">자는 시간 시작</string>
+    <string name="set_sleep_end">자는 시간 끝</string>
+    <string name="set_day_cut">하루 시작</string>
+    <string name="set_sleep_hint">자는 시간에는 알림이 소리 없이 와요. 화면을 켜거나 끝나는 시각이 되면 울려요. 3시간 넘게 늦으면 바로 울려요.</string>
+    <string name="set_theme">테마</string>
+    <string name="theme_system">시스템</string>
+    <string name="theme_light">라이트</string>
+    <string name="theme_dark">다크</string>
+    <string name="minus">−</string>
+    <string name="plus">+</string>
+
+    <string name="export_chooser">기록 보내기</string>
+    <string name="export_subject">먼지 기록 %1$s–%2$s</string>
+    <string name="export_title"># 먼지 기록 (%1$s–%2$s)</string>
+    <string name="export_day">## %1$s</string>
+    <string name="export_line">- %1$s %2$s</string>
+    <string name="export_food">- 건식 %1$dg / %2$dg · 습식 %3$dg</string>
+    <string name="export_none">- 기록 없음</string>
+    <string name="csv_header" translatable="false">id,type,local_time,amount,discarded,origin,note</string>
+</resources>
