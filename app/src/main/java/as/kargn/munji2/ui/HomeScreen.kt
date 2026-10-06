@@ -58,8 +58,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import `as`.kargn.munji2.R
@@ -594,6 +596,34 @@ private fun typeName(ctx: android.content.Context, type: EventType): String = ct
 
 private fun amountText(v: Double) = if (v % 1.0 == 0.0) v.toInt().toString() else v.toString()
 
+/** Hour and minute as plain number fields, each capped at two digits. */
+@Composable
+private fun TimeFields(hour: String, onHour: (String) -> Unit, minute: String, onMinute: (String) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TimeField(hour, onHour, 23, R.string.edit_hour, Modifier.weight(1f))
+        Text(":", style = MaterialTheme.typography.titleLarge)
+        TimeField(minute, onMinute, 59, R.string.edit_minute, Modifier.weight(1f))
+    }
+}
+
+/**
+ * One two-digit clock field. Focusing it puts the caret at the end of the digits with nothing selected,
+ * which is what makes "01" typeable: the first "0" stays and the "1" appends. Digits past two are refused,
+ * and the error border only appears on a value that is both non-empty and out of range.
+ */
+@Composable
+private fun TimeField(value: String, onChange: (String) -> Unit, max: Int, label: Int, modifier: Modifier) {
+    val field = remember(value) { TextFieldValue(value, TextRange(value.length)) }
+    OutlinedTextField(
+        field,
+        { new -> onChange(new.text.filter { c -> c.isDigit() }.take(2)) },
+        modifier, singleLine = true,
+        label = { Text(stringResource(label)) },
+        isError = value.isNotEmpty() && value.toIntOrNull() !in 0..max,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+    )
+}
+
 /**
  * Edit a row ([initial] != null) or backfill one (`직접 추가`). Any past time is allowed; the future and
  * a 남은 양 above what was in the bowl are refused inline. ADJUST_* rows only take a note: their time is
@@ -607,7 +637,9 @@ private fun EditSheet(initial: Event?, ev: List<Event>, now: Long, onSave: (Even
     val start = java.time.Instant.ofEpochMilli(initial?.at ?: now).atZone(zone)
     var type by remember { mutableStateOf(initial?.type ?: EventType.KREMEZIN) }
     var date by remember { mutableStateOf(start.toLocalDate()) }
-    val time = androidx.compose.material3.rememberTimePickerState(start.hour, start.minute, is24Hour = true)
+    // Held as text, not as an Int: the hour must accept a lone "0" so "01" can be typed.
+    var hourText by remember { mutableStateOf("%02d".format(start.hour)) }
+    var minuteText by remember { mutableStateOf("%02d".format(start.minute)) }
     // Backfill defaults to what the schedule would give now (위장약 alternation, 수액 100 mL).
     fun defaultAmount(t: EventType): String = when (t) {
         EventType.KREMEZIN -> "1"
@@ -621,11 +653,17 @@ private fun EditSheet(initial: Event?, ev: List<Event>, now: Long, onSave: (Even
     val isAdjust = initial != null && Item.entries.any { it.adjustType == initial.type }
     val unit = unitOf(type)
     val value = if (unit == null) initial?.amount ?: 1.0 else amount.replace(',', '.').toDoubleOrNull()
-    val at = if (isAdjust) initial!!.at else date.atTime(time.hour, time.minute).atZone(zone).toInstant().toEpochMilli()
-    val candidate = value?.let { v ->
-        if (initial == null) Regimen.manual(type, at, v, note.trim()) else Regimen.edited(initial, at, if (isAdjust) initial.amount else v, note.trim())
-    }
+    val hour = hourText.toIntOrNull()
+    val minute = minuteText.toIntOrNull()
+    val timeOk = hour != null && hour in 0..23 && minute != null && minute in 0..59
+    // atTime throws on 24-99, so the clock is only turned into an instant once it is a real time.
+    val at = if (isAdjust) initial!!.at else if (timeOk) date.atTime(hour!!, minute!!).atZone(zone).toInstant().toEpochMilli() else 0L
+    // An unusable amount or an out-of-range clock means there is nothing to save yet, so the button stays off.
+    val candidate = if (value == null || !timeOk) null else if (initial == null)
+        Regimen.manual(type, at, value, note.trim())
+    else Regimen.edited(initial, at, if (isAdjust) initial.amount else value, note.trim())
     val err = candidate?.let { Regimen.checkEdit(ev, it, System.currentTimeMillis()) }
+    val saveable = candidate != null && err == null && (value ?: -1.0) >= 0 && (isAdjust || timeOk)
     val dayFmt = remember { DateTimeFormatter.ofPattern("M/d (E)", Locale.KOREAN) }
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 32.dp),
@@ -646,7 +684,7 @@ private fun EditSheet(initial: Event?, ev: List<Event>, now: Long, onSave: (Even
                 Text(date.format(dayFmt), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 OutlinedButton({ date = date.plusDays(1) }) { Text(stringResource(R.string.edit_date_next)) }
             }
-            androidx.compose.material3.TimeInput(time)
+            TimeFields(hourText, { hourText = it }, minuteText, { minuteText = it })
             if (unit != null) OutlinedTextField(
                 amount, { amount = it }, Modifier.fillMaxWidth(), singleLine = true,
                 label = { Text(stringResource(unit)) },
@@ -660,7 +698,7 @@ private fun EditSheet(initial: Event?, ev: List<Event>, now: Long, onSave: (Even
             null -> {}
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button({ onSave(candidate!!) }, Modifier.weight(1f).height(56.dp), enabled = candidate != null && err == null && (value ?: -1.0) >= 0) {
+            Button({ onSave(candidate!!) }, Modifier.weight(1f).height(56.dp), enabled = saveable) {
                 Text(stringResource(R.string.edit_save))
             }
             if (initial != null) OutlinedButton({ onDelete(initial) }, Modifier.weight(1f).height(56.dp)) { Text(stringResource(R.string.edit_delete)) }
