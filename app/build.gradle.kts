@@ -17,6 +17,14 @@ android {
         versionName = "0.1"
     }
 
+    // One committed debug key for every machine. An APK signed with another key cannot update the copy already on
+    // the phone, and the only way past that is an uninstall, which wipes the dose log.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

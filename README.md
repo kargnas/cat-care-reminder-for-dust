@@ -44,6 +44,8 @@ cd cat-care-reminder-for-dust
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. The app starts with an empty log.
 
+Debug builds are signed with the committed `app/debug.keystore`, so a build from any machine installs over the copy already on a phone with `adb install -r` and keeps its log. Changing that key makes Android refuse the update, and the only way past it is an uninstall, which deletes the log.
+
 ## Changing the routine
 
 | What | Where |
