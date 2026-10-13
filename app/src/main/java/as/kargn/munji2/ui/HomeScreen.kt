@@ -149,6 +149,16 @@ fun HomeScreen(store: Store, focus: MutableStateFlow<Item?>, twoPane: Boolean, r
         scope.launch { Reminders.give(ctx, item, confirm = false) }
         if (focused == item) focus.value = null
     }
+    // One tap logs it, like 줬어요. The snackbar shows where the chain went, and its 되돌리기 is the same undo
+    // as the log row's, since a mistaken 놓침 would silence a dose that is still owed.
+    val miss: (Item) -> Unit = { item ->
+        scope.launch {
+            val e = Reminders.miss(ctx, item)
+            val next = Regimen.due(item, store.all(), System.currentTimeMillis(), store.settings.value, ZoneId.systemDefault()).effectiveAt
+            if (snack5(ctx.getString(R.string.missed_snack, Fmt.eventLabel(ctx, e), Fmt.hm(next)), undoLabel)) undo(e)
+        }
+        if (focused == item) focus.value = null
+    }
     // Guardrails warn, never block: a warned give needs a second tap within ARM_MS.
     val tap: (Due) -> Unit = { d ->
         if (Fmt.blocked(d, System.currentTimeMillis()) && armed != d.item.name) armed = d.item.name
@@ -186,8 +196,8 @@ fun HomeScreen(store: Store, focus: MutableStateFlow<Item?>, twoPane: Boolean, r
                     if (morning || armed == STIM_KEY) { armed = null; log(EventType.STIMULANT, 1.0, false) } else armed = STIM_KEY
                 }
                 Timeline(ev, dues, now, settings)
-                PrimaryAction(dues.first(), now, armed == dues.first().item.name, tap)
-                Others(dues.drop(1), now, armed, tap, { sheet = it }, stimArmed = armed == STIM_KEY) {
+                PrimaryAction(dues.first(), now, armed == dues.first().item.name, tap, miss)
+                Others(dues.drop(1), now, armed, tap, miss, { sheet = it }, stimArmed = armed == STIM_KEY) {
                     if (Regimen.inStimWindow(System.currentTimeMillis(), zone) || armed == STIM_KEY) { armed = null; log(EventType.STIMULANT, 1.0, false) } else armed = STIM_KEY
                 }
                 AdjustEntry { adjustItem = it; sheet = Sheet.ADJUST }
@@ -226,11 +236,13 @@ fun HomeScreen(store: Store, focus: MutableStateFlow<Item?>, twoPane: Boolean, r
             Sheet.SETTINGS -> ModalBottomSheet({ sheet = Sheet.NONE }) {
                 SettingsSheet(settings, theme, onSettings = { store.saveSettings(it); scope.launch { Reminders.changed(ctx) } }, onTheme = store::saveTheme)
             }
-            Sheet.ADJUST -> ModalBottomSheet({ sheet = Sheet.NONE }) {
+            // Fully expanded like the edit sheet: half height would hide the skip button under the navigation bar.
+            Sheet.ADJUST -> ModalBottomSheet({ sheet = Sheet.NONE }, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 AdjustSheet(
                     adjustItem, ev, now, settings,
                     onSave = { chain, target, note -> scope.launch { store.add(adjustItem.adjustType, chain, target.toDouble(), note = note); Reminders.changed(ctx) }; sheet = Sheet.NONE },
                     onCancel = { e -> undo(e); sheet = Sheet.NONE },
+                    onMiss = { miss(adjustItem); sheet = Sheet.NONE },
                 )
             }
             Sheet.FOOD_PUT, Sheet.WET, Sheet.WEIGHT, Sheet.FOOD_LEFT -> ModalBottomSheet({ sheet = Sheet.NONE }) {
@@ -303,43 +315,51 @@ private fun giveColors(d: Due, now: Long, armed: Boolean, tonal: Boolean) = when
 }
 
 @Composable
-private fun PrimaryAction(d: Due, now: Long, armed: Boolean, tap: (Due) -> Unit) {
+private fun PrimaryAction(d: Due, now: Long, armed: Boolean, tap: (Due) -> Unit, miss: (Item) -> Unit) {
     val ctx = LocalContext.current
     val early = Fmt.early(d, now)
     val other = Fmt.name(ctx, if (d.item == Item.KREMEZIN) Item.GI else Item.KREMEZIN)
-    Button(
-        onClick = { tap(d) },
-        modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
-        contentPadding = PaddingValues(16.dp),
-        colors = giveColors(d, now, armed, tonal = false),
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(R.string.action_give_label, Fmt.dose(ctx, d)), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(if (armed) stringResource(R.string.tap_again, Fmt.warn(ctx, d, now)) else Fmt.status(ctx, d, now), style = MaterialTheme.typography.bodyMedium)
-            if (d.lockedUntil > now) Text(stringResource(R.string.lock_reason, other), style = MaterialTheme.typography.bodySmall)
-            if (early) Text(stringResource(R.string.early_reason, other), style = MaterialTheme.typography.bodySmall)
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Button(
+            onClick = { tap(d) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
+            contentPadding = PaddingValues(16.dp),
+            colors = giveColors(d, now, armed, tonal = false),
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(stringResource(R.string.action_give_label, Fmt.dose(ctx, d)), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(if (armed) stringResource(R.string.tap_again, Fmt.warn(ctx, d, now)) else Fmt.status(ctx, d, now), style = MaterialTheme.typography.bodyMedium)
+                if (d.lockedUntil > now) Text(stringResource(R.string.lock_reason, other), style = MaterialTheme.typography.bodySmall)
+                if (early) Text(stringResource(R.string.early_reason, other), style = MaterialTheme.typography.bodySmall)
+            }
         }
+        // Only once the dose reads 늦음, so it never sits next to an on-time 줬어요.
+        if (Fmt.late(d, now)) TextButton({ miss(d.item) }) { Text(stringResource(R.string.miss_slot, Fmt.hm(d.dueAt))) }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Others(rest: List<Due>, now: Long, armed: String?, tap: (Due) -> Unit, open: (Sheet) -> Unit, stimArmed: Boolean, onStim: () -> Unit) {
+private fun Others(rest: List<Due>, now: Long, armed: String?, tap: (Due) -> Unit, miss: (Item) -> Unit, open: (Sheet) -> Unit, stimArmed: Boolean, onStim: () -> Unit) {
     val ctx = LocalContext.current
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         rest.forEach { d ->
             val isArmed = armed == d.item.name
-            FilledTonalButton(
-                { tap(d) }, Modifier.weight(1f).heightIn(min = 64.dp), contentPadding = PaddingValues(8.dp),
-                colors = giveColors(d, now, isArmed, tonal = true),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(Fmt.dose(ctx, d), style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        if (isArmed) stringResource(R.string.tap_again, Fmt.warn(ctx, d, now)) else Fmt.status(ctx, d, now),
-                        style = MaterialTheme.typography.labelSmall, maxLines = 3,
-                    )
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                FilledTonalButton(
+                    { tap(d) }, Modifier.fillMaxWidth().heightIn(min = 64.dp), contentPadding = PaddingValues(8.dp),
+                    colors = giveColors(d, now, isArmed, tonal = true),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(Fmt.dose(ctx, d), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (isArmed) stringResource(R.string.tap_again, Fmt.warn(ctx, d, now)) else Fmt.status(ctx, d, now),
+                            style = MaterialTheme.typography.labelSmall, maxLines = 3,
+                        )
+                    }
                 }
+                // The slot time is already in the status line above, so the short label fits the half-width column.
+                if (Fmt.late(d, now)) TextButton({ miss(d.item) }) { Text(stringResource(R.string.action_missed)) }
             }
         }
     }
@@ -498,13 +518,13 @@ private fun AdjustEntry(open: (Item) -> Unit) {
 }
 
 /**
- * Moves only the next dose. Live line shows the gap from the last same-item dose (크레메진: against its
- * reference range, green/amber/red)
+ * Moves only the next dose, or skips it (`놓침`) once its chain due has passed. Live line shows the gap from the
+ * last same-item dose (크레메진: against its reference range, green/amber/red)
  * and the separation from the other medicine. Red still saves, as `경고 무시하고 저장`, and the warning is
  * stored as the adjustment row's note so the export shows it.
  */
 @Composable
-private fun AdjustSheet(item: Item, ev: List<Event>, now: Long, s: Settings, onSave: (Long, Long, String) -> Unit, onCancel: (Event) -> Unit) {
+private fun AdjustSheet(item: Item, ev: List<Event>, now: Long, s: Settings, onSave: (Long, Long, String) -> Unit, onCancel: (Event) -> Unit, onMiss: () -> Unit) {
     val ctx = LocalContext.current
     val zone = ZoneId.systemDefault()
     val d = Regimen.due(item, ev, now, s, zone)
@@ -563,6 +583,13 @@ private fun AdjustSheet(item: Item, ev: List<Event>, now: Long, s: Settings, onS
             ) { Text(stringResource(if (red) R.string.adjust_save_override else R.string.adjust_save)) }
             if (existing != null) OutlinedButton({ onCancel(existing) }, Modifier.weight(1f).height(56.dp)) { Text(stringResource(R.string.adjust_cancel)) }
         }
+        // Skipping waits for the slot's time, so a 놓침 row never sits in the future (edits refuse future times too).
+        val canSkip = now >= d.dueAt
+        OutlinedButton(onMiss, Modifier.fillMaxWidth().height(56.dp), enabled = canSkip) { Text(stringResource(R.string.adjust_skip, Fmt.hm(d.dueAt))) }
+        if (!canSkip) Text(
+            stringResource(R.string.adjust_skip_hint, Fmt.hm(d.dueAt)),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -589,6 +616,7 @@ private fun typeName(ctx: android.content.Context, type: EventType): String = ct
         EventType.WEIGHT -> R.string.type_weight
         EventType.STIMULANT -> R.string.type_stimulant
         EventType.ADJUST_KREMEZIN, EventType.ADJUST_GI, EventType.ADJUST_FLUID -> R.string.adjust_entry
+        EventType.MISS_KREMEZIN, EventType.MISS_GI, EventType.MISS_FLUID -> R.string.type_missed
     }
 )
 

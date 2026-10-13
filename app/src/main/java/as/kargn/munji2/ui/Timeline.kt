@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import `as`.kargn.munji2.domain.Due
 import `as`.kargn.munji2.domain.Event
-import `as`.kargn.munji2.domain.EventType
 import `as`.kargn.munji2.domain.Fmt
 import `as`.kargn.munji2.domain.Item
 import `as`.kargn.munji2.domain.Regimen
@@ -38,7 +37,7 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * 24 h strip centred on now: −12 h … +12 h. Filled dots = given, hollow = upcoming due,
+ * 24 h strip centred on now: −12 h … +12 h. Filled dots = given, × = missed, hollow = upcoming due,
  * shaded band = 30-min lock, faint band = sleep window.
  */
 @Composable
@@ -103,14 +102,19 @@ fun Timeline(events: List<Event>, dues: List<Due>, now: Long, s: Settings, modif
             drawRect(cs.error.copy(alpha = 0.3f), Offset(x(a), mid - 16f), Size(x(d.lockedUntil) - x(a), 32f))
         }
 
-        // Given events.
+        // Given events as dots; missed slots as an × in the item colour, at the time the dose was due.
         for (e in events) if (e.at in start..now && !e.type.name.startsWith("ADJUST")) {
-            val item = Item.entries.firstOrNull { it.type == e.type }
+            val missed = Item.entries.firstOrNull { it.missType == e.type }
+            val item = missed ?: Item.entries.firstOrNull { it.type == e.type }
             val c = item?.let(colorOf) ?: cs.outline
-            drawCircle(c, if (item != null) 9f else 5f, Offset(x(e.at), mid))
+            val p = Offset(x(e.at), mid)
+            if (missed != null) {
+                drawLine(c, p + Offset(-8f, -8f), p + Offset(8f, 8f), 4f)
+                drawLine(c, p + Offset(-8f, 8f), p + Offset(8f, -8f), 4f)
+            } else drawCircle(c, if (item != null) 9f else 5f, p)
             if (item != null) {
                 val r = measurer.measure(Fmt.hm(e.at), label)
-                val above = e.type == EventType.KREMEZIN
+                val above = item == Item.KREMEZIN
                 drawText(r, topLeft = Offset(x(e.at) - r.size.width / 2f, if (above) mid - 22f - r.size.height else mid + 38f))
             }
         }

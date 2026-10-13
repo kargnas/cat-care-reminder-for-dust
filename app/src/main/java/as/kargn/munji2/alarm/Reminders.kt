@@ -15,6 +15,7 @@ import `as`.kargn.munji2.MainActivity
 import `as`.kargn.munji2.R
 import `as`.kargn.munji2.data.Store
 import `as`.kargn.munji2.domain.Due
+import `as`.kargn.munji2.domain.Event
 import `as`.kargn.munji2.domain.Fmt
 import `as`.kargn.munji2.domain.Item
 import `as`.kargn.munji2.domain.Regimen
@@ -182,6 +183,21 @@ object Reminders {
         }
         changed(ctx)
         return id
+    }
+
+    /**
+     * Logs the current slot as 놓침. The chain then runs on from that slot's due time, so this reminder stops the
+     * same way it does after 줬어요. Returns the stored row so the caller can offer 되돌리기.
+     */
+    suspend fun miss(ctx: Context, item: Item): Event {
+        val store = Store.get(ctx)
+        val e = Regimen.missed(item, store.all(), System.currentTimeMillis(), store.settings.value, zone())
+        val id = store.add(e)
+        store.setSnooze(item, 0L)
+        store.setSilent(item, false)
+        NotificationManagerCompat.from(ctx).cancel(dueId(item))
+        changed(ctx)
+        return e.copy(id = id)
     }
 
     suspend fun snooze(ctx: Context, item: Item) {

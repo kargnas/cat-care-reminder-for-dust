@@ -224,6 +224,59 @@ class RegimenTest {
         assertEquals(Item.KREMEZIN, Regimen.next(anchors + ev(EventType.FLUID, t(3, 20), 100.0) + adj, t(4, 12), s, zone).item)
     }
 
+    @Test fun missedSlotKeepsTheRhythm() {
+        // 크레메진 due 15:00, marked missed at 19:00 → next 03:00 (the missed due + 12 h), not 07:00.
+        val miss = Regimen.missed(Item.KREMEZIN, anchors, t(4, 19), s, zone)
+        assertEquals(EventType.MISS_KREMEZIN, miss.type)
+        assertEquals(t(4, 15), miss.at)
+        val log = anchors + miss
+        assertEquals(t(5, 3), Regimen.due(Item.KREMEZIN, log, t(4, 19), s, zone).dueAt)
+        // Given after all at 20:30: the real dose moves the chain again.
+        assertEquals(t(5, 8, 30), Regimen.due(Item.KREMEZIN, log + ev(EventType.KREMEZIN, t(4, 20, 30)), t(4, 21), s, zone).dueAt)
+    }
+
+    @Test fun missedGiCountsForTheAlternation() {
+        // Last given 2알 → this 17:00 slot is 1알. Skipping it makes the next one 2알, as if it had been given.
+        val miss = Regimen.missed(Item.GI, anchors, t(4, 20), s, zone)
+        assertEquals(1.0, miss.amount, 0.0)
+        val next = Regimen.due(Item.GI, anchors + miss, t(4, 20), s, zone)
+        assertEquals(2.0, next.amount, 0.0)
+        assertEquals(t(5, 5), next.dueAt)
+    }
+
+    @Test fun missedFluidClosesTheDay() {
+        // Due 13:00, missed at 20:00 → nothing more today, next is tomorrow 13:00, and today reads 놓침, not 완료.
+        val yesterday = anchors + ev(EventType.FLUID, t(3, 20), 100.0)
+        val miss = Regimen.missed(Item.FLUID, yesterday, t(4, 20), s, zone)
+        assertEquals(t(4, 13), miss.at)
+        val d = Regimen.due(Item.FLUID, yesterday + miss, t(4, 20), s, zone)
+        assertEquals(t(5, 13), d.dueAt)
+        assertTrue(d.missedToday)
+        assertFalse(d.doneToday)
+        // Never given before: the miss still closes the day instead of leaving it due "now" forever.
+        val first = Regimen.missed(Item.FLUID, emptyList(), t(4, 20), s, zone)
+        assertEquals(t(5, 13), Regimen.fluidDue(listOf(first), t(4, 20), s, zone))
+    }
+
+    @Test fun missedSlotIsNotADoseForTheGuardrails() {
+        val miss = Regimen.missed(Item.KREMEZIN, anchors, t(4, 19), s, zone)
+        // 위장약's 30-min lock still counts from the 03:00 크레메진 that was given, not from the missed 15:00.
+        assertEquals(t(4, 3, 30), Regimen.due(Item.GI, anchors + miss, t(4, 19), s, zone).lockedUntil)
+        // A 16:00 dose is 13 h after the last real one: not 조기 투약, even 1 h after the missed slot.
+        val k = ev(EventType.KREMEZIN, t(4, 16))
+        assertTrue(Regimen.violations(anchors + miss + k, k, s, zone).isEmpty())
+    }
+
+    @Test fun missingAMovedDoseSkipsItsChainSlot() {
+        // 15:00 moved to 17:00, then missed: the adjustment is used up and the rhythm stays 03:00/15:00.
+        val log = anchors + ev(EventType.ADJUST_KREMEZIN, t(4, 15), t(4, 17).toDouble())
+        val miss = Regimen.missed(Item.KREMEZIN, log, t(4, 18), s, zone)
+        assertEquals(t(4, 15), miss.at)
+        val d = Regimen.due(Item.KREMEZIN, log + miss, t(4, 18), s, zone)
+        assertEquals(0L, d.adjustedAt)
+        assertEquals(t(5, 3), d.effectiveAt)
+    }
+
     @Test fun overrideNotesAreDerivedFromTheLog() {
         // 크레메진 12 min after a 17:00 위장약 → 간격 위반 (12분).
         val g17 = ev(EventType.GI, t(4, 17), 1.0)

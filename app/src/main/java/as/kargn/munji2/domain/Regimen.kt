@@ -8,15 +8,20 @@ import java.time.ZonedDateTime
 
 /**
  * ADJUST_* rows are schedule adjustments, not doses: `at` = the chain due they replace,
- * `amount` = adjusted target (epoch ms). They live in the log so they are undoable and exported.
+ * `amount` = adjusted target (epoch ms). MISS_* rows are skipped slots, not doses either: `at` = the
+ * chain due that was missed, `amount` = the dose it would have been. Both live in the log so they are
+ * undoable and exported.
  */
-enum class EventType { KREMEZIN, GI, FLUID, FOOD_PUT, FOOD_LEFT, WET, WEIGHT, STIMULANT, ADJUST_KREMEZIN, ADJUST_GI, ADJUST_FLUID }
+enum class EventType {
+    KREMEZIN, GI, FLUID, FOOD_PUT, FOOD_LEFT, WET, WEIGHT, STIMULANT, ADJUST_KREMEZIN, ADJUST_GI, ADJUST_FLUID,
+    MISS_KREMEZIN, MISS_GI, MISS_FLUID,
+}
 
 /** Reminder-bearing items. Food/weight are logged but never alarm. */
-enum class Item(val type: EventType, val adjustType: EventType) {
-    KREMEZIN(EventType.KREMEZIN, EventType.ADJUST_KREMEZIN),
-    GI(EventType.GI, EventType.ADJUST_GI),
-    FLUID(EventType.FLUID, EventType.ADJUST_FLUID),
+enum class Item(val type: EventType, val adjustType: EventType, val missType: EventType) {
+    KREMEZIN(EventType.KREMEZIN, EventType.ADJUST_KREMEZIN, EventType.MISS_KREMEZIN),
+    GI(EventType.GI, EventType.ADJUST_GI, EventType.MISS_GI),
+    FLUID(EventType.FLUID, EventType.ADJUST_FLUID, EventType.MISS_FLUID),
 }
 
 /** Spacing from the last dose of the same item. */
@@ -65,7 +70,7 @@ data class Settings(
 
 data class Due(
     val item: Item,
-    /** Chain due: last actual dose + interval. */
+    /** Chain due: last actual dose (or missed slot) + interval. */
     val dueAt: Long,
     /** Hard minimum: other medicine + 30 min; 0 when the other medicine was never given. */
     val lockedUntil: Long,
@@ -81,6 +86,8 @@ data class Due(
     val latestAt: Long = 0L,
     /** 수액 only: a dose is already logged in the current owner-day. */
     val doneToday: Boolean = false,
+    /** 수액 only: the current owner-day was marked missed. */
+    val missedToday: Boolean = false,
 ) {
     /**
      * Target time for reminders, widget and the "next action" pick: the later of the (adjusted or
@@ -149,8 +156,12 @@ object Regimen {
 
     private fun last(events: List<Event>, type: EventType) = events.filter { it.type == type }.maxByOrNull { it.at }
 
-    /** Last 2알 → next 1알 and vice versa; decided by the last amount, not the clock. */
-    fun nextGiAmount(events: List<Event>): Double = if (last(events, EventType.GI)?.amount == 2.0) 1.0 else 2.0
+    // Given or missed, whichever is later: the chain and the 위장약 alternation run on from it. The guardrails
+    // (separation, reference range, override notes) keep using last(), since nothing was given at a missed slot.
+    private fun lastSlot(events: List<Event>, item: Item) = events.filter { it.type == item.type || it.type == item.missType }.maxByOrNull { it.at }
+
+    /** Last 2알 → next 1알 and vice versa; decided by the last amount, not the clock. A missed slot counts as one. */
+    fun nextGiAmount(events: List<Event>): Double = if (lastSlot(events, Item.GI)?.amount == 2.0) 1.0 else 2.0
 
     fun due(item: Item, events: List<Event>, now: Long, s: Settings, zone: ZoneId): Due {
         val d = chainDue(item, events, now, s, zone)
@@ -159,22 +170,24 @@ object Regimen {
         // An adjustment only counts for the chain due it was made against; logging the dose moves the
         // chain and so clears it without extra state.
         val adj = events.filter { it.type == item.adjustType && it.at == d.dueAt }.maxByOrNull { it.id }
+        val today = ownerDay(now, s, zone)
         return d.copy(
             adjustedAt = adj?.amount?.toLong() ?: 0L,
             earliestAt = if (l != null && sp != null) l.at + sp.min else 0L,
             latestAt = if (l != null && sp != null) l.at + sp.max else 0L,
-            doneToday = item == Item.FLUID && events.any { it.type == EventType.FLUID && ownerDay(it.at, s, zone) == ownerDay(now, s, zone) },
+            doneToday = item == Item.FLUID && events.any { it.type == EventType.FLUID && ownerDay(it.at, s, zone) == today },
+            missedToday = item == Item.FLUID && events.any { it.type == EventType.MISS_FLUID && ownerDay(it.at, s, zone) == today },
         )
     }
 
     private fun chainDue(item: Item, events: List<Event>, now: Long, s: Settings, zone: ZoneId): Due = when (item) {
         Item.KREMEZIN -> {
-            val l = last(events, EventType.KREMEZIN)
-            // A late dose shifts the chain; never pull earlier to catch up.
+            val l = lastSlot(events, item)
+            // A late dose shifts the chain; never pull earlier to catch up. A missed slot keeps the rhythm.
             separated(Due(item, l?.let { it.at + DOSE_INTERVAL } ?: now, 0L, 1.0), last(events, EventType.GI))
         }
         Item.GI -> {
-            val l = last(events, EventType.GI)
+            val l = lastSlot(events, item)
             separated(Due(item, l?.let { it.at + DOSE_INTERVAL } ?: now, 0L, nextGiAmount(events)), last(events, EventType.KREMEZIN))
         }
         Item.FLUID -> Due(item, fluidDue(events, now, s, zone), 0L, FLUID_ML)
@@ -255,12 +268,24 @@ object Regimen {
     fun manual(type: EventType, at: Long, amount: Double, note: String = ""): Event =
         Event(0L, type, at, amount, note = note, origin = Origin.MANUAL)
 
-    /** Once per owner-day; the reminder sits at the end of the sleep window (the owner's "morning"). Never given: due now. */
+    /**
+     * The slot the owner gives up on. It sits at the chain due, not the adjusted target or the tap time, so the
+     * chain keeps its rhythm; the amount is what that slot would have been. id 0 until Room assigns one.
+     */
+    fun missed(item: Item, events: List<Event>, now: Long, s: Settings, zone: ZoneId): Event {
+        val d = due(item, events, now, s, zone)
+        return Event(0L, item.missType, d.dueAt, d.amount)
+    }
+
+    /**
+     * Once per owner-day; the reminder sits at the end of the sleep window (the owner's "morning"). Never given: due now.
+     * A day marked missed is closed the same as a given one.
+     */
     fun fluidDue(events: List<Event>, now: Long, s: Settings, zone: ZoneId): Long {
-        if (events.none { it.type == EventType.FLUID }) return now
+        val slots = events.filter { it.type == EventType.FLUID || it.type == EventType.MISS_FLUID }
+        if (slots.isEmpty()) return now
         var day = ownerDay(now, s, zone)
-        val givenToday = events.any { it.type == EventType.FLUID && ownerDay(it.at, s, zone) == day }
-        if (givenToday) day = day.plusDays(1)
+        if (slots.any { ownerDay(it.at, s, zone) == day }) day = day.plusDays(1)
         val start = Instant.ofEpochMilli(dayStart(day, s, zone)).atZone(zone)
         var t: ZonedDateTime = start.toLocalDate().atStartOfDay(zone).plusMinutes(s.sleepEndMin.toLong())
         if (t.isBefore(start)) t = t.plusDays(1)

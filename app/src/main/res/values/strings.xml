@@ -23,6 +23,9 @@
     <string name="action_undo">되돌리기</string>
     <string name="action_redo">다시 넣기</string>
     <string name="action_give_label">%1$s 줬어요</string>
+    <string name="action_missed">놓쳤어요</string>
+    <string name="miss_slot">놓쳤어요 · %1$s 회차 건너뛰기</string>
+    <string name="missed_snack">%1$s · 다음 %2$s</string>
 
     <string name="ch_loud">투약 알림</string>
     <string name="ch_loud_desc">약과 수액 시간이에요. 소리와 진동이 울려요.</string>
@@ -48,9 +51,12 @@
     <string name="status_before_12h">12시간 전 · 예정 %1$s</string>
     <string name="status_fluid_done">오늘 완료</string>
     <string name="status_fluid_todo">오늘 아직 · %1$s</string>
+    <string name="status_fluid_missed">오늘 놓침</string>
     <string name="note_spacing">참고 범위 밖 (%1$s)</string>
     <string name="note_repeat_gap">같은 날 2회차 (%1$s 간격)</string>
     <string name="note_repeat_day">같은 날 2회차</string>
+    <string name="missed_row">%1$s 놓침</string>
+    <string name="type_missed">놓침</string>
     <string name="adjust_row">→ %1$s %2$s 조정</string>
     <string name="adjust_title">%1$s 시각 조정</string>
     <string name="adjust_tag">조정</string>
@@ -66,6 +72,8 @@
     <string name="adjust_sep_amber">%1$s(%2$s)과 권장 2시간 미만</string>
     <string name="adjust_save">저장</string>
     <string name="adjust_cancel">조정 취소</string>
+    <string name="adjust_skip">이번 회차 건너뛰기 (%1$s)</string>
+    <string name="adjust_skip_hint">예정 시각 %1$s 이후에 건너뛸 수 있어요</string>
     <string name="adjust_minus_1h">−1시간</string>
     <string name="adjust_minus_30">−30분</string>
     <string name="adjust_plus_30">+30분</string>

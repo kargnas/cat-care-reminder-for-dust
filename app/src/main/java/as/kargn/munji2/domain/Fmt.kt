@@ -49,14 +49,21 @@ object Fmt {
     /** Open but before the vet's recommended 2 h gap (amber state). */
     fun early(d: Due, now: Long) = d.lockedUntil <= now && now < d.recommendedAt && d.recommendedAt > d.dueAt
 
+    /** A minute past the target: the status turns to "늦음" and the 놓쳤어요 button appears under the dose. */
+    fun late(d: Due, now: Long) = now >= d.effectiveAt + Regimen.MIN
+
     /**
      * Two-tier separation: "아직 못 줘요 · 최소 30분" while locked, "지금 가능 · 권장은 HH:MM"
      * between 30 min and 2 h; otherwise "예정 15:00 · 2시간 남음" / "· 늦음" against the target time.
      */
     fun status(ctx: Context, d: Due, now: Long): String = when {
         d.earliestAt > now -> ctx.getString(R.string.status_before_12h, hm(d.dueAt))
-        // 수액 is "하루 한 번": done/not-yet for the owner-day, with the reminder time when pending.
-        d.item == Item.FLUID -> if (d.doneToday) ctx.getString(R.string.status_fluid_done) else ctx.getString(R.string.status_fluid_todo, timing(ctx, d, now))
+        // 수액 is "하루 한 번": done/missed/not-yet for the owner-day, with the reminder time when pending.
+        d.item == Item.FLUID -> when {
+            d.doneToday -> ctx.getString(R.string.status_fluid_done)
+            d.missedToday -> ctx.getString(R.string.status_fluid_missed)
+            else -> ctx.getString(R.string.status_fluid_todo, timing(ctx, d, now))
+        }
         d.lockedUntil > now -> ctx.getString(R.string.status_locked, dur(ctx, d.lockedUntil - now + Regimen.MIN - 1), hm(d.lockedUntil))
         early(d, now) -> ctx.getString(R.string.status_early, hm(d.recommendedAt))
         else -> timing(ctx, d, now)
@@ -64,7 +71,7 @@ object Fmt {
 
     private fun timing(ctx: Context, d: Due, now: Long): String = when {
         now < d.effectiveAt - Regimen.MIN -> ctx.getString(R.string.status_due_at, hm(d.effectiveAt), dur(ctx, d.effectiveAt - now))
-        now < d.effectiveAt + Regimen.MIN -> ctx.getString(R.string.status_now, hm(d.effectiveAt))
+        !late(d, now) -> ctx.getString(R.string.status_now, hm(d.effectiveAt))
         else -> ctx.getString(R.string.status_late, hm(d.dueAt), dur(ctx, now - d.dueAt))
     }
 
@@ -113,5 +120,7 @@ object Fmt {
             val item = Item.entries.first { it.adjustType == e.type }
             ctx.getString(R.string.adjust_row, hm(e.amount.toLong()), name(ctx, item))
         }
+        EventType.MISS_KREMEZIN, EventType.MISS_GI, EventType.MISS_FLUID ->
+            ctx.getString(R.string.missed_row, dose(ctx, Item.entries.first { it.missType == e.type }, e.amount))
     }
 }
