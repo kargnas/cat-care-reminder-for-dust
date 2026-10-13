@@ -98,6 +98,8 @@
     <string name="add_entry">직접 추가</string>
     <string name="edit_date_prev">전날</string>
     <string name="edit_date_next">다음 날</string>
+    <string name="edit_hour">시간</string>
+    <string name="edit_minute">분</string>
     <string name="edit_now">지금</string>
     <string name="edit_note">메모</string>
     <string name="edit_delete">삭제</string>
