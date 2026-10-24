@@ -235,8 +235,9 @@ fun HomeScreen(store: Store, focus: MutableStateFlow<Item?>, twoPane: Boolean, r
                     onDelete = { undo(it); sheet = Sheet.NONE },
                 )
             }
-            Sheet.SETTINGS -> ModalBottomSheet({ sheet = Sheet.NONE }) {
-                SettingsSheet(settings, theme, onSettings = { store.saveSettings(it); scope.launch { Reminders.changed(ctx) } }, onTheme = store::saveTheme)
+            // Fully expanded like the edit sheet: half height leaves the theme buttons under the navigation bar.
+            Sheet.SETTINGS -> ModalBottomSheet({ sheet = Sheet.NONE }, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+                SettingsSheet(settings, theme, onSettings = { store.saveSettings(it); scope.launch { Reminders.settingsChanged(ctx) } }, onTheme = store::saveTheme)
             }
             // Fully expanded like the edit sheet: half height would hide the skip button under the navigation bar.
             Sheet.ADJUST -> ModalBottomSheet({ sheet = Sheet.NONE }, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
@@ -485,6 +486,8 @@ private fun AmountSheet(kind: Sheet, onDone: (Double, Boolean) -> Unit) {
 private fun SettingsSheet(s: Settings, theme: Int, onSettings: (Settings) -> Unit, onTheme: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
+        Stepper(stringResource(R.string.set_fluid), s.fluidMin) { onSettings(s.copy(fluidMin = it)) }
+        Text(stringResource(R.string.set_fluid_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Stepper(stringResource(R.string.set_sleep_start), s.sleepStartMin) { onSettings(s.copy(sleepStartMin = it)) }
         Stepper(stringResource(R.string.set_sleep_end), s.sleepEndMin) { onSettings(s.copy(sleepEndMin = it)) }
         Text(stringResource(R.string.set_sleep_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

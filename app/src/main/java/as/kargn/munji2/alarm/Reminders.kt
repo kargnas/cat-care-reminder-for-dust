@@ -212,6 +212,19 @@ object Reminders {
         changed(ctx)
     }
 
+    /**
+     * A settings change can move a due that is already in the shade into the future (수액 11:00 → 21:00 while its
+     * `늦음` reminder is showing). That reminder is taken down here, and the new time posts it again. Not part of
+     * [changed]: `debug_fire` posts a future due on purpose and the activity's resume would take it straight down.
+     */
+    suspend fun settingsChanged(ctx: Context) {
+        val store = Store.get(ctx)
+        val now = System.currentTimeMillis()
+        val nm = NotificationManagerCompat.from(ctx)
+        for (d in Regimen.allDues(store.all(), now, store.settings.value, zone())) if (now < d.effectiveAt - Regimen.MIN) nm.cancel(dueId(d.item))
+        changed(ctx)
+    }
+
     /** Every log change: alarms and widget follow the event log. */
     suspend fun changed(ctx: Context) {
         reschedule(ctx)
