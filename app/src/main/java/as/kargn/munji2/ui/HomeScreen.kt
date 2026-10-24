@@ -235,7 +235,8 @@ fun HomeScreen(store: Store, focus: MutableStateFlow<Item?>, twoPane: Boolean, r
                     onDelete = { undo(it); sheet = Sheet.NONE },
                 )
             }
-            Sheet.SETTINGS -> ModalBottomSheet({ sheet = Sheet.NONE }) {
+            // Fully expanded like the edit sheet: half height leaves the theme buttons under the navigation bar.
+            Sheet.SETTINGS -> ModalBottomSheet({ sheet = Sheet.NONE }, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
                 SettingsSheet(settings, theme, onSettings = { store.saveSettings(it); scope.launch { Reminders.changed(ctx) } }, onTheme = store::saveTheme)
             }
             // Fully expanded like the edit sheet: half height would hide the skip button under the navigation bar.
