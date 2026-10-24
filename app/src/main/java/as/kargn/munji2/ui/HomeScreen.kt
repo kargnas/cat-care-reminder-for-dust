@@ -485,6 +485,8 @@ private fun AmountSheet(kind: Sheet, onDone: (Double, Boolean) -> Unit) {
 private fun SettingsSheet(s: Settings, theme: Int, onSettings: (Settings) -> Unit, onTheme: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
+        Stepper(stringResource(R.string.set_fluid), s.fluidMin) { onSettings(s.copy(fluidMin = it)) }
+        Text(stringResource(R.string.set_fluid_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Stepper(stringResource(R.string.set_sleep_start), s.sleepStartMin) { onSettings(s.copy(sleepStartMin = it)) }
         Stepper(stringResource(R.string.set_sleep_end), s.sleepEndMin) { onSettings(s.copy(sleepEndMin = it)) }
         Text(stringResource(R.string.set_sleep_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

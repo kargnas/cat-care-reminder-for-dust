@@ -85,14 +85,21 @@ class Store private constructor(context: Context) {
     suspend fun undo(id: Long) = db.dao().setDeleted(id, true)
     suspend fun restore(id: Long) = db.dao().setDeleted(id, false)
 
-    private fun readSettings() = Settings(
-        dayCutMin = prefs.getInt("dayCut", 300),
-        sleepStartMin = prefs.getInt("sleepStart", 300),
-        sleepEndMin = prefs.getInt("sleepEnd", 780),
-    )
+    private fun readSettings(): Settings {
+        val sleepEnd = prefs.getInt("sleepEnd", 780)
+        return Settings(
+            dayCutMin = prefs.getInt("dayCut", 300),
+            sleepStartMin = prefs.getInt("sleepStart", 300),
+            sleepEndMin = sleepEnd,
+            // Fluids used to be due at the sleep-window end, so a phone that has no "fluid" key yet keeps that time.
+            // saveSettings writes the key on the first change of any setting, and from then on the two move apart.
+            fluidMin = prefs.getInt("fluid", sleepEnd),
+        )
+    }
 
     fun saveSettings(s: Settings) {
-        prefs.edit().putInt("dayCut", s.dayCutMin).putInt("sleepStart", s.sleepStartMin).putInt("sleepEnd", s.sleepEndMin).apply()
+        prefs.edit().putInt("dayCut", s.dayCutMin).putInt("sleepStart", s.sleepStartMin).putInt("sleepEnd", s.sleepEndMin)
+            .putInt("fluid", s.fluidMin).apply()
         _settings.value = s
     }
 

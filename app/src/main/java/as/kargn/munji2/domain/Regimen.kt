@@ -66,6 +66,8 @@ data class Settings(
     val dayCutMin: Int = 5 * 60,
     val sleepStartMin: Int = 5 * 60,
     val sleepEndMin: Int = 13 * 60,
+    /** 수액 reminder, minutes after local midnight. Separate from the sleep window: fluids moved to the evening while waking did not. */
+    val fluidMin: Int = 13 * 60,
 )
 
 data class Due(
@@ -278,8 +280,9 @@ object Regimen {
     }
 
     /**
-     * Once per owner-day; the reminder sits at the end of the sleep window (the owner's "morning"). Never given: due now.
-     * A day marked missed is closed the same as a given one.
+     * Once per owner-day, at the 수액 time from the settings. Never given: due now. A day marked missed is closed the
+     * same as a given one. A time before the day cut (e.g. 00:00 with a 05:00 cut) is the end of its owner-day, so a
+     * dose given after midnight still closes the evening before.
      */
     fun fluidDue(events: List<Event>, now: Long, s: Settings, zone: ZoneId): Long {
         val slots = events.filter { it.type == EventType.FLUID || it.type == EventType.MISS_FLUID }
@@ -287,7 +290,7 @@ object Regimen {
         var day = ownerDay(now, s, zone)
         if (slots.any { ownerDay(it.at, s, zone) == day }) day = day.plusDays(1)
         val start = Instant.ofEpochMilli(dayStart(day, s, zone)).atZone(zone)
-        var t: ZonedDateTime = start.toLocalDate().atStartOfDay(zone).plusMinutes(s.sleepEndMin.toLong())
+        var t: ZonedDateTime = start.toLocalDate().atStartOfDay(zone).plusMinutes(s.fluidMin.toLong())
         if (t.isBefore(start)) t = t.plusDays(1)
         return t.toInstant().toEpochMilli()
     }

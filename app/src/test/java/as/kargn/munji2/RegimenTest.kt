@@ -89,12 +89,33 @@ class RegimenTest {
         assertEquals(LocalDate.of(2025, 3, 3), Regimen.ownerDay(t(4, 6), late, zone))
     }
 
-    @Test fun fluidDueAtWakeAndMovesToNextDayAfterGiven() {
+    @Test fun fluidDueAtItsTimeAndMovesToNextDayAfterGiven() {
         assertEquals(t(4, 12), Regimen.fluidDue(anchors, t(4, 12), s, zone)) // never given: now
         val yesterday = anchors + ev(EventType.FLUID, t(3, 20), 100.0)
         assertEquals(t(4, 13), Regimen.fluidDue(yesterday, t(4, 12), s, zone))
         val given = yesterday + ev(EventType.FLUID, t(5, 2), 100.0) // 02:00 belongs to owner-day 3/4
         assertEquals(t(5, 13), Regimen.fluidDue(given, t(5, 3), s, zone))
+    }
+
+    @Test fun changedFluidTimeAppliesToTheNextOpenDay() {
+        val evening = s.copy(fluidMin = 21 * 60)
+        val yesterday = anchors + ev(EventType.FLUID, t(3, 21), 100.0)
+        // Not given yet today: today's slot moves to the new time, and the sleep-window end no longer drags it.
+        assertEquals(t(4, 21), Regimen.fluidDue(yesterday, t(4, 12), evening, zone))
+        assertEquals(t(4, 21), Regimen.fluidDue(yesterday, t(4, 12), evening.copy(sleepEndMin = 7 * 60), zone))
+        assertEquals(t(4, 21), Regimen.missed(Item.FLUID, yesterday, t(4, 22), evening, zone).at)
+        // Already given today at the old time: no second dose tonight, tomorrow at the new time.
+        val givenAtOld = yesterday + ev(EventType.FLUID, t(4, 13), 100.0)
+        assertEquals(t(5, 21), Regimen.fluidDue(givenAtOld, t(4, 14), evening, zone))
+        // Given late after midnight: still yesterday's owner-day, so the next one is this evening.
+        val afterMidnight = yesterday + ev(EventType.FLUID, t(5, 0, 30), 100.0)
+        assertEquals(t(5, 21), Regimen.fluidDue(afterMidnight, t(5, 1), evening, zone))
+    }
+
+    @Test fun fluidTimeBeforeTheDayCutClosesItsOwnerDay() {
+        val midnight = s.copy(fluidMin = 0)
+        val log = anchors + ev(EventType.FLUID, t(4, 0, 10), 100.0) // owner-day 3/3
+        assertEquals(t(5, 0), Regimen.fluidDue(log, t(4, 12), midnight, zone)) // owner-day 3/4 runs to 3/5 05:00
     }
 
     @Test fun sleepWindowSilencesUntilThreeHoursOverdue() {

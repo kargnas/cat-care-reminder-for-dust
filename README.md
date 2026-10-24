@@ -6,6 +6,7 @@ An Android app that reminds you when to give a cat its medicine, fluids and food
 
 - **Home screen.** A 24-hour timeline of given, missed and upcoming doses. The next thing to do is the big button below it. Other items, food, weight and the appetite stimulant are under that.
 - **Schedules follow the last real dose.** The next dose is the last given time plus the interval, or the due time of a missed dose plus the interval. A late dose moves the whole chain later. A dose is never pulled earlier to catch up.
+- **Fluids once a day.** Fluids are due once per day at a time set in Settings, separate from the sleep window. Once the day's fluids are given or marked missed, the next reminder is the next day at that time. A changed time applies today if today's fluids are still pending, otherwise from tomorrow.
 - **Alternating amounts.** A medicine given as 1 tablet, then 2, then 1, picks the next amount from the last dose given or missed, not from the clock.
 - **Gaps between medicines.** Two medicines can have a minimum gap and a recommended gap. Under the minimum, the button is greyed out. Between the minimum and the recommended gap, it is amber and shows the recommended time.
 - **Warnings never block.** If a dose is early or too close to another medicine, the first tap shows the reason. A second tap within 5 seconds logs it anyway, and the log row records the warning.
@@ -52,7 +53,7 @@ Debug builds are signed with the committed `app/debug.keystore`, so a build from
 |---|---|
 | Intervals, gaps, amounts, food and weight thresholds | `app/src/main/java/as/kargn/munji2/domain/Regimen.kt` |
 | Medicine names and all other text | `app/src/main/res/values/strings.xml` |
-| Sleep window, day boundary, theme | Settings screen in the app |
+| Fluids time, sleep window, day boundary, theme | Settings screen in the app |
 
 ## Disclaimer
 

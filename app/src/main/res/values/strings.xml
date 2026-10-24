@@ -158,6 +158,8 @@
     <string name="day_header">%1$s · 건식 %2$dg · 습식 %3$dg</string>
 
     <string name="settings_title">설정</string>
+    <string name="set_fluid">수액 시간</string>
+    <string name="set_fluid_hint">하루 한 번 이 시각에 알려요. 오늘 이미 줬거나 놓쳤으면 내일부터 바뀐 시각이에요.</string>
     <string name="set_sleep_start">자는 시간 시작</string>
     <string name="set_sleep_end">자는 시간 끝</string>
     <string name="set_day_cut">하루 시작</string>
